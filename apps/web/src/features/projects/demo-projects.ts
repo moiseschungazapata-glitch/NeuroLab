@@ -1,0 +1,2 @@
+import type { Project } from '../../types';
+export const seeds:Project[]=[{id:1,name:'Clasificación de imágenes',description:'Reconocimiento de dígitos manuscritos con MNIST.',family:'CNN',status:'En desarrollo'},{id:2,name:'Predicción de demanda',description:'Exploración de patrones en series temporales.',family:'RNN',status:'Exploración'},{id:3,name:'Generación de imágenes',description:'Exploración de un generador y un discriminador con MNIST.',family:'GAN',status:'En revisión'}];

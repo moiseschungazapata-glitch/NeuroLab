@@ -1,0 +1,11 @@
+import { Pause,Play } from 'lucide-react';
+import { useState } from 'react';
+
+const columns=[3,4,5,4,3];
+const nodes=columns.flatMap((count,column)=>Array.from({length:count},(_,row)=>({column,row,x:48+column*104,y:132+(row-(count-1)/2)*44})));
+const connections=nodes.flatMap(n=>nodes.filter(t=>t.column===n.column+1).map(t=>({from:n,to:t,d:`M ${n.x} ${n.y} C ${n.x+52} ${n.y}, ${t.x-52} ${t.y}, ${t.x} ${t.y}`})));
+
+export function NeuralScene(){
+ const [paused,setPaused]=useState(false);
+ return <figure className={'neural-scene '+(paused?'animation-paused':'')} aria-label="Ilustración animada de señales recorriendo una red neuronal"><div className="scene-heading"><span><i/> CONEXIONES EN MOVIMIENTO</span><span>01 — 03</span></div><div className="neural-stage"><div className="neural-halo"/><svg viewBox="0 0 512 264" aria-hidden="true"><defs><radialGradient id="node-core"><stop stopColor="#e5efcb"/><stop offset="1" stopColor="#a8ce8a"/></radialGradient><linearGradient id="neural-line"><stop stopColor="#7ba76c" stopOpacity=".12"/><stop offset=".5" stopColor="#c3db9c" stopOpacity=".5"/><stop offset="1" stopColor="#7ba76c" stopOpacity=".12"/></linearGradient></defs><ellipse className="neural-orbit orbit-a" cx="256" cy="132" rx="232" ry="113"/><ellipse className="neural-orbit orbit-b" cx="256" cy="132" rx="180" ry="126"/>{connections.map((c,i)=><path key={'base'+i} d={c.d} className="neural-connection"/>)}{connections.filter((_,i)=>i%3===0).map((c,i)=><path key={'signal'+i} d={c.d} className="neural-signal" style={{animationDelay:`${i*-.37}s`}}/>)}{nodes.map((n,i)=><g key={i} className="neural-node" style={{animationDelay:`${(n.column*.42+n.row*.2)*-1}s`}}><circle className="neural-node-ring" cx={n.x} cy={n.y} r="13"/><circle className="neural-node-shell" cx={n.x} cy={n.y} r="8"/><circle className="neural-node-core" cx={n.x} cy={n.y} r="3"/></g>)}</svg></div><div className="neural-axis"><span>ENTRADA</span><span>CAPAS Y CONEXIONES</span><span>SALIDA</span></div><figcaption><span>Una idea. Miles de conexiones.</span><button type="button" onClick={()=>setPaused(!paused)} aria-label={paused?'Reanudar animación':'Pausar animación'} title={paused?'Reanudar animación':'Pausar animación'}>{paused?<Play size={12}/>:<Pause size={12}/>}</button></figcaption></figure>
+}

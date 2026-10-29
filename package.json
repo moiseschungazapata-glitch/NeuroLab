@@ -1,0 +1,24 @@
+{
+  "name": "neurolab-enterprise",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite apps/web --host 127.0.0.1",
+    "build": "tsc -p apps/web/tsconfig.json && vite build apps/web --outDir ../../dist --emptyOutDir",
+    "preview": "vite preview apps/web --outDir ../../dist --host 127.0.0.1",
+    "typecheck": "tsc -p apps/web/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.5"
+  }
+}
+

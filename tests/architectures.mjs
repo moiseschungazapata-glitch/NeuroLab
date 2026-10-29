@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.NEUROLAB_PLAYWRIGHT||'playwright');
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+await page.addInitScript(()=>sessionStorage.setItem('nl-session','moiseschungazapata@gmail.com'));
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{
+ await page.goto('http://127.0.0.1:5173/');await page.getByRole('button',{name:'Diseñador de redes',exact:true}).click();
+ assert.equal((await page.getByTestId('parameter-total').innerText()).replaceAll('.',''),'144266');
+ await page.getByLabel('Alto',{exact:true}).fill('32');
+ const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Exportar JSON',exact:true}).click()]);
+ const stream=await download.createReadStream();let body='';for await(const c of stream)body+=c;const config=JSON.parse(body);assert.equal(config.input[0],32);assert.ok(config.summary.parameters>144266);
+ await page.getByRole('button',{name:'Guardar revisión'}).click();await page.getByLabel('Alto',{exact:true}).fill('40');
+ await page.getByRole('button',{name:'Recuperar',exact:true}).click();await page.getByRole('button',{name:'Confirmar recuperación'}).click();assert.equal(await page.getByLabel('Alto',{exact:true}).inputValue(),'32');
+ await page.getByLabel('Proyecto actual').selectOption('2');await page.locator('.family-tabs button').filter({has:page.getByText('CNN',{exact:true})}).click();
+ assert.equal(await page.getByLabel('Alto',{exact:true}).inputValue(),'28');
+ await page.getByLabel('Proyecto actual').selectOption('1');assert.equal(await page.getByLabel('Alto',{exact:true}).inputValue(),'32');
+ await page.getByLabel('Unidades de salida',{exact:true}).fill('1');
+ await page.getByRole('button',{name:'Validar configuración'}).click();await page.getByRole('status').filter({hasText:'Softmax necesita'}).waitFor();assert.ok(await page.getByRole('button',{name:'Exportar JSON'}).isDisabled());
+ await page.getByLabel('Unidades de salida',{exact:true}).fill('10');
+ await page.getByLabel('Tipo de bloque',{exact:true}).selectOption('Dense');await page.getByRole('button',{name:'Agregar capa'}).click();
+ await page.getByRole('button',{name:'Subir capa'}).click();await page.getByRole('button',{name:'Validar configuración'}).click();await page.getByRole('status').filter({hasText:'después de Dense'}).waitFor();
+ await page.getByRole('button',{name:'Bajar capa'}).click();await page.getByRole('button',{name:'Validar configuración'}).click();await page.getByRole('status').filter({hasText:'Configuración CNN válida'}).waitFor();
+ await page.screenshot({path:'preview-architecture-cnn.png',fullPage:true,animations:'disabled'});
+ await page.locator('.family-tabs button').filter({has:page.getByText('RNN',{exact:true})}).click();await page.getByLabel('Características',{exact:true}).fill('4');assert.ok((await page.locator('.architecture-analysis').innerText()).includes('24 × 4'));
+ await page.locator('.family-tabs button').filter({has:page.getByText('GAN',{exact:true})}).click();await page.getByLabel('Ancho',{exact:true}).fill('16');assert.ok((await page.locator('.architecture-analysis').innerText()).includes('28 × 16 × 1'));
+ await page.reload();await page.getByRole('button',{name:'Diseñador de redes',exact:true}).click();
+ await page.locator('.family-tabs button').filter({has:page.getByText('GAN',{exact:true})}).click();assert.equal(await page.getByLabel('Ancho',{exact:true}).inputValue(),'16');
+ await page.getByRole('button',{name:'Activar modo oscuro'}).click();await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.screenshot({path:'preview-architecture-mobile.png',fullPage:true,animations:'disabled'});
+ assert.deepEqual(errors,[]);
+ console.log('PASS: dimensions, counts, JSON summaries, immutable revisions/restore, per-project isolation, output/order validation, RNN/CNN/GAN settings, persistence and mobile/dark layout.');
+}catch(e){await page.screenshot({path:'preview-architecture-error.png',fullPage:true,animations:'disabled'});throw e}finally{await browser.close()}
