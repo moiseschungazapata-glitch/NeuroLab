@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import psutil
 from fastapi import FastAPI, Response
+from .architectures import validate_architecture
 
 app = FastAPI(title="NeuroLab monitoring", version="1.0.0")
 STARTED = time.monotonic()
@@ -33,3 +34,9 @@ def dashboard_system(response: Response):
 @app.get("/api/v1/health")
 def health():
     return {"status": "ok", "service": "dashboard-monitoring"}
+
+
+@app.post("/api/v1/architectures/validate")
+def architecture_validation(architecture: dict, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return validate_architecture(architecture)

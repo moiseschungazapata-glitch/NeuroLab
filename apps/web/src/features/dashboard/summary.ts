@@ -1,17 +1,17 @@
 import type {LaboratoryContext} from '../../hooks/useLaboratory';
-import {families, validArchitecture, type Family} from '../architectures/model';
+import {designFamilies, validArchitecture, type Family, type DesignFamily} from '../architectures/model';
 
-export type DashboardAlert={id:string;title:string;description:string;action:string;page:number;family?:Family;kind:'warning'|'info';save?:boolean;create?:boolean;runId?:number;projectId?:number};
+export type DashboardAlert={id:string;title:string;description:string;action:string;page:number;family?:Family;designFamily?:DesignFamily;kind:'warning'|'info';save?:boolean;create?:boolean;runId?:number;projectId?:number};
 type DashboardData=Pick<LaboratoryContext,'projects'|'runs'|'versions'|'architectures'|'running'|'job'|'dismissedAlerts'>;
 export function dashboardSummary(data:DashboardData){
  const terminal=data.runs.filter(r=>['Completado','Cancelado','Fallido'].includes(r.status));
  const completed=terminal.filter(r=>r.status==='Completado');
  const cancelled=terminal.filter(r=>r.status==='Cancelado');
  const failed=terminal.filter(r=>r.status==='Fallido');
- const valid=data.projects.length?families.filter(f=>!validArchitecture(data.architectures[f])):[];
+ const valid=data.projects.length?designFamilies.filter(f=>!validArchitecture(data.architectures[f])):[];
  const alerts:DashboardAlert[]=[];
  if(!data.projects.length)alerts.push({id:'no-projects',kind:'info',title:'Crea tu primer proyecto',description:'Necesitas un proyecto para comenzar un experimento.',action:'Crear proyecto',page:1,create:true});
- for(const f of data.projects.length?families:[]){const error=validArchitecture(data.architectures[f]);if(error)alerts.push({id:`architecture-${f}-${JSON.stringify(data.architectures[f])}`,kind:'warning',title:`Revisa tu arquitectura ${f}`,description:error,action:'Corregir arquitectura',page:3,family:f});}
+ for(const f of data.projects.length?designFamilies:[]){const error=validArchitecture(data.architectures[f]);if(error)alerts.push({id:`architecture-${f}-${JSON.stringify(data.architectures[f])}`,kind:'warning',title:`Revisa tu arquitectura ${f}`,description:error,action:'Corregir arquitectura',page:3,designFamily:f,...(f!=='Feedforward'?{family:f}:{})});}
  const interrupted=data.runs.find(r=>r.status==='Cancelado'||r.status==='Fallido');
  if(interrupted)alerts.push({id:`interrupted-${interrupted.id}`,kind:'warning',title:interrupted.status==='Fallido'?'Hay un experimento fallido':'Hay una simulación cancelada',description:`${interrupted.name} · ${interrupted.projectName}. Revisa el historial antes de iniciar otro experimento.`,action:'Ver entrenamientos',page:5,family:interrupted.family,projectId:interrupted.projectId});
  const latest=completed[0];

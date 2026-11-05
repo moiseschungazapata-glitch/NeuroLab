@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+import {execFileSync} from 'node:child_process';
+const js=p=>ts.transpileModule(fs.readFileSync(p,'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const url=s=>'data:text/javascript;base64,'+Buffer.from(s).toString('base64');
+const analysisURL=url(js('apps/web/src/features/architectures/analysis.ts'));
+const {analyzeArchitecture,normalizeBank,feedforwardTemplate}=await import(analysisURL);
+const {parseArchitecture,kerasSource}=await import(url(js('apps/web/src/features/architectures/exchange.ts').replace("'./analysis'",JSON.stringify(analysisURL))));
+const feed={family:'Feedforward',input:[2],latent:100,outputUnits:1,outputActivation:'Sigmoid',layers:[{id:1,kind:'Dense',units:3,activation:'ReLU'}]};
+assert.equal(analyzeArchitecture(feed).parameters,13);
+assert.deepEqual(analyzeArchitecture(feed).rows.map(r=>r.output),[[3],[1]]);
+assert.equal(analyzeArchitecture(feedforwardTemplate).parameters,225);
+assert.deepEqual(normalizeBank({}).Feedforward,feedforwardTemplate);
+assert.deepEqual(parseArchitecture(JSON.stringify({schemaVersion:4,...feed,ignored:'metadata'})),feed);assert.deepEqual(parseArchitecture(JSON.stringify({schemaVersion:3,...feed})),feed);
+for(const invalid of [null,[],{...feed,layers:null},{...feed,input:[0]},{...feed,layers:[{...feed.layers[0],kind:'Conv2D'}]},{...feed,layers:[{...feed.layers[0],id:-1}]},{...feed,outputActivation:'Softmax'},{...feed,schemaVersion:99},{...feed,layers:Array(31).fill(feed.layers[0])}])assert.throws(()=>parseArchitecture(JSON.stringify(invalid)));
+assert.throws(()=>parseArchitecture('{invalid'));
+assert.throws(()=>parseArchitecture(' '.repeat(256*1024+1)));
+const fixtures=[feed,{family:'RNN',input:[5,3],latent:100,outputUnits:1,outputActivation:'Lineal',layers:[{id:1,kind:'GRU',units:2,activation:'Tanh'}]},{family:'CNN',input:[4,4,1],latent:100,outputUnits:2,outputActivation:'Softmax',layers:[{id:1,kind:'Conv2D',units:1,activation:'ReLU',kernel:3,stride:1,padding:'valid'}]},{family:'GAN',input:[2,2,1],latent:2,outputActivation:'Tanh',layers:[{id:1,kind:'Generador · Dense',units:3,activation:'ReLU'},{id:2,kind:'Discriminador · Dense',units:2,activation:'ReLU'}]}];
+for(const f of fixtures){const source=kerasSource(f);assert.ok(source.includes('keras.Model'));assert.ok(!source.includes('model.fit('));if(process.env.NEUROLAB_PYTHON)execFileSync(process.env.NEUROLAB_PYTHON,['-c','import ast,sys; ast.parse(sys.stdin.read())'],{input:source});}
+fs.mkdirSync('.runtime',{recursive:true});fs.writeFileSync('.runtime/architecture-fixtures.json',JSON.stringify(fixtures.map(a=>({architecture:analyzeArchitecture(a).architecture,parameters:analyzeArchitecture(a).parameters}))));
+console.log('PASS: Feedforward shapes/counts, legacy bank migration, safe JSON import, invalid bounds and Keras export'+(process.env.NEUROLAB_PYTHON?' Python syntax.':'.'));

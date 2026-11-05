@@ -1,6 +1,6 @@
 # NeuroLab Enterprise
 
-Frontend React/TypeScript con proyectos, diseñador RNN/CNN/GAN, datasets y recorrido de entrenamiento simulado. M01 añade monitoreo real del equipo mediante FastAPI.
+Frontend React/TypeScript con proyectos, diseñador Feedforward/RNN/CNN/GAN, datasets y recorrido de entrenamiento simulado. M01 añade monitoreo real del equipo mediante FastAPI.
 
 ## Inicio
 
@@ -26,6 +26,10 @@ Gestión local con búsqueda y filtros, contexto, justificación de familia, doc
 
 Las cuentas, invitaciones y permisos de servidor siguen pendientes de identidad y persistencia compartida. Véase [la documentación de M02](docs/architecture/projects.md).
 
+## M04 Diseñador
+
+Cuatro familias de diseño, validación de formas y parámetros, importación JSON con confirmación, exportación JSON/código Keras, deshacer/rehacer, plantillas y revisiones nombradas. Validación analítica independiente en Python. Feedforward se habilita en el diseñador; sus datasets y entrenamiento permanecen pendientes de los módulos siguientes. Véase [M04](docs/architecture/designer.md).
+
 ## Verificación
 
 - `npm run build`
@@ -33,6 +37,9 @@ Las cuentas, invitaciones y permisos de servidor siguen pendientes de identidad 
 - `node tests/projects.mjs`
 - `node tests/projects-actions.mjs`
 - `node tests/architecture-math.mjs`
+- `node tests/architecture-exchange.mjs`
+- `node tests/architectures.mjs`
+- `node tests/architectures-tools.mjs`
 - `node tests/dataset-math.mjs`
 - `node tests/dashboard.mjs`
 - `node tests/dashboard-system.mjs`

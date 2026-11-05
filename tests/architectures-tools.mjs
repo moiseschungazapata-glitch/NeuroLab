@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.NEUROLAB_PLAYWRIGHT||'playwright');
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+await page.addInitScript(()=>sessionStorage.setItem('nl-session','moiseschungazapata@gmail.com'));
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const tab=f=>page.locator('.family-tabs button').filter({has:page.getByText(f,{exact:true})}).click();
+const upload=json=>page.getByLabel('Importar arquitectura JSON').setInputFiles({name:'architecture.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(json))});
+try{
+ await page.goto('http://127.0.0.1:5173/');await page.getByRole('button',{name:'Diseñador de redes',exact:true}).click();await tab('Feedforward');
+ assert.equal((await page.getByTestId('parameter-total').innerText()).replaceAll('.',''),'225');
+ await page.getByLabel('Características de entrada').fill('2');await page.getByRole('button',{name:'Deshacer',exact:true}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'4');await page.getByRole('button',{name:'Rehacer',exact:true}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'2');
+ await page.getByRole('button',{name:'Validar en servidor'}).click();await page.getByRole('status').filter({hasText:'Servidor: diseño válido'}).waitFor();
+ const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Exportar JSON',exact:true}).click()]);const stream=await download.createReadStream();let body='';for await(const c of stream)body+=c;const config=JSON.parse(body);assert.equal(config.family,'Feedforward');assert.equal(config.input[0],2);
+ await page.getByLabel('Nombre de revisión').fill('Base tabular');await page.getByRole('button',{name:'Guardar revisión'}).click();
+ await upload({...config,input:[6]});await page.getByRole('button',{name:'Cancelar importación'}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'2');
+ await upload({...config,input:[6]});await page.getByRole('button',{name:'Confirmar importación'}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'6');
+ await upload({...config,layers:null});await page.getByRole('alert').filter({hasText:'entre 1 y 30'}).waitFor();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'6');
+ await page.getByRole('button',{name:'Recuperar',exact:true}).click();await page.getByRole('button',{name:'Confirmar recuperación'}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'2');
+ await page.getByRole('button',{name:'Deshacer',exact:true}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'6');
+ await page.getByRole('button',{name:'Restablecer plantilla'}).click();await page.getByRole('button',{name:'Confirmar plantilla'}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'4');
+ await page.getByRole('button',{name:'Eliminar revisión',exact:true}).click();await page.getByRole('button',{name:'Conservar revisión'}).click();assert.ok((await page.getByLabel('Revisión guardada').innerText()).includes('Base tabular'));
+ const [code]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Exportar código Keras'}).click()]);assert.equal(code.suggestedFilename(),'arquitectura_keras.py');
+ await page.getByLabel('Proyecto actual').selectOption('2');await tab('Feedforward');assert.equal(await page.getByLabel('Características de entrada').inputValue(),'4');await page.getByLabel('Características de entrada').fill('8');
+ await page.getByLabel('Proyecto actual').selectOption('1');await tab('Feedforward');assert.equal(await page.getByLabel('Características de entrada').inputValue(),'4');
+ await page.reload();await page.getByRole('button',{name:'Diseñador de redes',exact:true}).click();await tab('Feedforward');assert.equal(await page.getByLabel('Características de entrada').inputValue(),'4');
+ await page.route('**/api/v1/architectures/validate',r=>r.fulfill({status:503,body:'offline'}));await page.getByRole('button',{name:'Validar en servidor'}).click();await page.getByRole('alert').filter({hasText:'No se pudo validar'}).waitFor();
+ await page.getByLabel('Características de entrada').fill('0');await page.getByRole('button',{name:'Vista general',exact:true}).click();
+ await page.getByRole('heading',{name:'Revisa tu arquitectura Feedforward',exact:true}).waitFor();await page.getByRole('button',{name:'Corregir arquitectura',exact:true}).click();assert.equal(await page.getByLabel('Características de entrada').inputValue(),'0');await page.getByLabel('Características de entrada').fill('4');
+ await page.unroute('**/api/v1/architectures/validate');await page.getByRole('button',{name:'Validar en servidor'}).click();await page.getByRole('status').filter({hasText:'Servidor: diseño válido'}).waitFor();
+ await page.getByRole('button',{name:'Activar modo oscuro'}).click();await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'preview-designer-feedforward-mobile.png',fullPage:true,animations:'disabled'});
+ await page.setViewportSize({width:320,height:800});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);console.log('PASS: Feedforward, undo/redo, live server validation, JSON preview/cancel/import/rejection, named revisions, restore undo, reset, Keras export, project isolation, persistence, API failure and dark/mobile.');
+}finally{await browser.close()}

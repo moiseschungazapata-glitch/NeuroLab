@@ -2,18 +2,21 @@ import type {Architecture,Family} from './model';
 export type ShapeRow={id:string;layerId?:number;name:string;input:number[];output:number[];parameters:number;branch:string};
 const recurrent=['SimpleRNN','LSTM','GRU'];
 export const shapeLabel=(shape:number[])=>shape.join(' × ');
-export function normalizeArchitecture(a:Architecture):Architecture{return {...a,input:a.input??(a.family==='RNN'?[24,1]:[28,28,1]),outputUnits:a.outputUnits??(a.family==='CNN'?10:1),outputActivation:a.outputActivation??(a.family==='CNN'?'Softmax':a.family==='GAN'?'Tanh':'Lineal'),layers:a.layers.map(l=>({...l,...(l.kind==='Conv2D'?{stride:l.stride??1,padding:l.padding??'same'}:l.kind==='MaxPooling2D'?{stride:l.stride??l.units,padding:l.padding??'valid'}:{})}))}}
-export function normalizeBank(bank:Record<Family,Architecture>){return Object.fromEntries(Object.entries(bank).map(([f,a])=>[f,normalizeArchitecture(a)])) as Record<Family,Architecture>}
+export const feedforwardTemplate:Architecture={family:'Feedforward',latent:100,input:[4],outputUnits:1,outputActivation:'Sigmoid',layers:[{id:1,kind:'Dense',units:16,activation:'ReLU'},{id:2,kind:'Dense',units:8,activation:'ReLU'}]};
+export function normalizeArchitecture(a:Architecture):Architecture{return {...a,input:a.input??(a.family==='Feedforward'?[4]:a.family==='RNN'?[24,1]:[28,28,1]),outputUnits:a.outputUnits??(a.family==='CNN'?10:1),outputActivation:a.outputActivation??(a.family==='CNN'?'Softmax':a.family==='GAN'?'Tanh':'Lineal'),layers:a.layers.map(l=>({...l,...(l.kind==='Conv2D'?{stride:l.stride??1,padding:l.padding??'same'}:l.kind==='MaxPooling2D'?{stride:l.stride??l.units,padding:l.padding??'valid'}:{})}))}}
+export function normalizeBank(bank:Record<Family,Architecture>&{Feedforward?:Architecture}){return Object.fromEntries(Object.entries({Feedforward:structuredClone(feedforwardTemplate),...bank}).map(([f,a])=>[f,normalizeArchitecture(a)])) as Record<Family|'Feedforward',Architecture>}
 const integer=(n:number,min:number,max:number)=>Number.isInteger(n)&&n>=min&&n<=max;
 const size=(shape:number[])=>shape.reduce((a,b)=>a*b,1);
 export function analyzeArchitecture(raw:Architecture){
  const a=normalizeArchitecture(raw),errors:string[]=[],rows:ShapeRow[]=[];
  const add=(name:string,input:number[],output:number[],parameters=0,branch='Modelo',layerId?:number)=>rows.push({id:branch+'-'+rows.length,layerId,name,input:[...input],output:[...output],parameters,branch});
  const input=a.input!;
- if(input.length!==(a.family==='RNN'?2:3)||input.some((n,i)=>!integer(n,1,i===2?4:512)))errors.push(a.family==='RNN'?'La entrada RNN necesita pasos y características enteros entre 1 y 512.':'La imagen necesita alto y ancho entre 1 y 512, y entre 1 y 4 canales.');
+ if(!['Feedforward','RNN','CNN','GAN'].includes(a.family))errors.push('Familia de arquitectura no admitida.');
+ if(input.length!==(a.family==='Feedforward'?1:a.family==='RNN'?2:3)||input.some((n,i)=>!integer(n,1,i===2?4:512)))errors.push(a.family==='Feedforward'?'Feedforward necesita un número de características entero entre 1 y 512.':a.family==='RNN'?'La entrada RNN necesita pasos y características enteros entre 1 y 512.':'La imagen necesita alto y ancho entre 1 y 512, y entre 1 y 4 canales.');
  if(!a.layers.length)errors.push('Agrega al menos una capa.');
  if(a.layers.length>30)errors.push('El diseñador admite como máximo 30 bloques editables.');
  if(new Set(a.layers.map(l=>l.id)).size!==a.layers.length)errors.push('Cada bloque debe tener un identificador único.');
+ if(a.layers.some(l=>!Number.isSafeInteger(l.id)||l.id<0))errors.push('Los identificadores de bloque deben ser enteros no negativos.');
  if(a.layers.some(l=>!integer(l.units,1,1024)))errors.push('Revisa las capas: los valores deben ser enteros entre 1 y 1024.');
  const acts=['ReLU','Tanh','Sigmoid','LeakyReLU'];
  if(a.layers.some(l=>l.kind!=='MaxPooling2D'&&!acts.includes(l.activation)))errors.push('Hay una activación de capa no admitida.');
@@ -27,7 +30,9 @@ export function analyzeArchitecture(raw:Architecture){
   if(!['Lineal','ReLU','Tanh','Sigmoid','Softmax'].includes(a.outputActivation!))errors.push('Selecciona una activación de salida válida.');
   if(a.outputActivation==='Softmax'&&a.outputUnits!<2)errors.push('Softmax necesita al menos 2 unidades de salida.');
  }
- if(a.family==='RNN'){
+ if(a.family==='Feedforward'){
+  if(a.layers.some(l=>l.kind!=='Dense'))errors.push('Feedforward solo admite bloques Dense.');
+ }else if(a.family==='RNN'){
   if(!a.layers.some(l=>recurrent.includes(l.kind)))errors.push('RNN necesita al menos una capa recurrente.');
   let dense=false;for(const l of a.layers){if(l.kind==='Dense')dense=true;else if(!recurrent.includes(l.kind))errors.push('Bloque no compatible con RNN.');else if(dense)errors.push('Coloca las capas recurrentes antes de los bloques Dense.');}
  }else if(a.family==='CNN'){

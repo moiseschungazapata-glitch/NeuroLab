@@ -1,6 +1,6 @@
-# API de monitoreo M01
+# API local M01 y M04
 
-FastAPI sirve `GET /api/v1/health` y `GET /api/v1/dashboard/system`.
+FastAPI sirve `GET /api/v1/health`, `GET /api/v1/dashboard/system` y `POST /api/v1/architectures/validate`. Este último valida diseños y calcula parámetros analíticamente sin cargar TensorFlow.
 CPU, memoria y disco son mediciones reales del host de la API con psutil. No se exponen rutas, usuarios, procesos ni variables de entorno. Las respuestas de recursos llevan Cache-Control: no-store.
 
 ## Ejecución local
