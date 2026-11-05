@@ -57,4 +57,4 @@ El estado permanece en `useLaboratory`, montado en `App`, para que cambiar de pa
 
 Los estilos mantienen su orden de carga para conservar la apariencia y los temas. Los comandos npm se ejecutan desde la raíz y apuntan al frontend en `apps/web`; las dependencias siguen centralizadas en la raíz para evitar instalaciones duplicadas.
 
-Las familias operativas siguen siendo RNN/CNN/GAN; M04 incluye además Feedforward para diseño y exportación. M01 implementa una API local FastAPI de monitoreo. Los demás dominios del servidor, workers y base de datos permanecen pendientes. Los archivos `.gitkeep` conservan las carpetas vacías al versionarlas.
+Las familias operativas siguen siendo RNN/CNN/GAN; M04 incluye además Feedforward para diseño y exportación. M01 implementa una API local FastAPI de monitoreo. M06 añade cola FIFO, procesos worker TensorFlow y persistencia SQLite de trabajos; los demás dominios del servidor y PostgreSQL siguen pendientes. Los archivos `.gitkeep` conservan las carpetas vacías al versionarlas.

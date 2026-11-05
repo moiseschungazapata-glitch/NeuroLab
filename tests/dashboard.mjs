@@ -34,7 +34,7 @@ try{
  assert.equal(await count('completed-count'),3);assert.equal(await count('active-count'),0);
  await page.getByRole('button',{name:'Guardar versión',exact:true}).click();
  await dashboard();assert.equal(await page.getByRole('heading',{name:'Resultado sin versión vinculada'}).count(),0);
- await page.evaluate(()=>{const data=JSON.parse(localStorage.getItem('nl-project-architectures-v3'));data['1'].GAN.layers=data['1'].GAN.layers.filter(l=>l.kind.startsWith('Generador'));localStorage.setItem('nl-project-architectures-v3',JSON.stringify(data))});
+ await page.evaluate(()=>{const data=JSON.parse(localStorage.getItem('nl-project-architectures-v3'));localStorage.setItem('nl-current-project','1');data['1'].GAN.layers=data['1'].GAN.layers.filter(l=>l.kind.startsWith('Generador'));localStorage.setItem('nl-project-architectures-v3',JSON.stringify(data))});
  await page.reload();
  await page.getByRole('heading',{name:'Revisa tu arquitectura GAN'}).waitFor();
  await page.getByRole('button',{name:'Corregir arquitectura'}).click();

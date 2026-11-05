@@ -1,6 +1,6 @@
 # M04: Diseñador de arquitecturas
 
-El diseñador soporta Feedforward, RNN, CNN y GAN. Feedforward se habilita para diseño y exportación; los módulos de proyectos, datasets, fundamentos y entrenamiento mantienen sus familias operativas anteriores. Tiene panel de entrada/bloques, grafo y propiedades; autoguardado por proyecto y familia; orden de bloques; salida configurable; validación de formas; tabla de operaciones y parámetros; revisiones recuperables y exportación JSON con esquema 4 (importación compatible con 3 y 4). Los controles y la tabla son responsive y admiten los temas existentes.
+El diseñador soporta Feedforward, RNN, CNN y GAN. Feedforward se habilita para diseño y exportación; M05 añade sus datasets tabulares. Proyectos, fundamentos y entrenamiento mantienen sus familias operativas anteriores. Tiene panel de entrada/bloques, grafo y propiedades; autoguardado por proyecto y familia; orden de bloques; salida configurable; validación de formas; tabla de operaciones y parámetros; revisiones recuperables y exportación JSON con esquema 4 (importación compatible con 3 y 4). Los controles y la tabla son responsive y admiten los temas existentes.
 
 ## Formas y operaciones
 
@@ -20,7 +20,7 @@ Las dimensiones no incluyen el lote. La validación rechaza dimensiones no enter
 - GRU: `3*unidades*(entradas+unidades+1)`; se define la variante con `reset_after=false`, un sesgo por transformación. No se presenta como el conteo de cualquier variante GRU.
 - Pooling, Flatten y Reshape: cero parámetros.
 
-El total incluye pesos y sesgos de las salidas automáticas y, en GAN, ambas redes por separado. Son cálculos analíticos del diseño definido; no se instancia TensorFlow ni se realiza entrenamiento. La simulación existente continúa siendo ilustrativa y no procesa el dataset, aunque se cambien las dimensiones.
+El total incluye pesos y sesgos de las salidas automáticas y, en GAN, ambas redes por separado. Son cálculos analíticos del diseño definido; M04 no instancia TensorFlow ni realiza entrenamiento; M06 sí construye y entrena el diseño validado en un worker separado. La simulación existente continúa siendo ilustrativa y no procesa el dataset, aunque se cambien las dimensiones.
 
 ## Persistencia y compatibilidad
 
@@ -40,7 +40,7 @@ El total incluye pesos y sesgos de las salidas automáticas y, en GAN, ambas red
 - Restablecer plantilla requiere confirmación y no modifica revisiones ni ejecuciones.
 - Revisiones opcionalmente nombradas, hasta 100 por proyecto/familia, comparación resumida con el borrador y eliminación confirmada. Fallos de almacenamiento se informan; no se afirma que una revisión se guardó cuando falla la escritura. Las fechas usan America/Lima.
 - Fallos del autoguardado de arquitectura muestran una advertencia persistente y permiten exportar JSON para respaldar el estado en memoria.
-- Código Python exportable con TensorFlow/Keras (API de Keras 3, TensorFlow 2.16+). Construye la arquitectura y muestra model.summary(), incluidas las ramas GAN, activaciones y GRU reset_after=False. No compila la función de pérdida, entrena ni incluye pesos aprendidos. Se verificó sintaxis Python para las cuatro familias; no se ejecutó TensorFlow en este entorno.
+- Código Python exportable con TensorFlow/Keras (API de Keras 3, TensorFlow 2.16+). Construye la arquitectura y muestra model.summary(), incluidas las ramas GAN, activaciones y GRU reset_after=False. No compila la función de pérdida, entrena ni incluye pesos aprendidos. Se verificó sintaxis Python para las cuatro familias; la exportación se verificó sintácticamente y M06 ejecutó el constructor equivalente con TensorFlow para las cuatro familias.
 
 ## Validación independiente de servidor
 

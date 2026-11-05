@@ -3,11 +3,32 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from contextlib import asynccontextmanager
 import psutil
 from fastapi import FastAPI, Response
 from .architectures import validate_architecture
+from .training_service import TrainingService
+from .training_routes import router as training_router
 
-app = FastAPI(title="NeuroLab monitoring", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app):
+    engine = TrainingService()
+    engine.start()
+    app.state.training = engine
+    try:
+        yield
+    finally:
+        engine.close()
+
+
+app = FastAPI(title="NeuroLab local services", version="1.0.0", lifespan=lifespan)
+app.include_router(training_router)
+@app.middleware('http')
+async def no_training_cache(request, call_next):
+    response = await call_next(request)
+    if '/training' in request.url.path:
+        response.headers['Cache-Control'] = 'no-store'
+    return response
 STARTED = time.monotonic()
 
 
@@ -21,7 +42,7 @@ def system_snapshot():
         "cpuPercent": cpu,
         "memory": {"usedBytes": memory.total - memory.available, "totalBytes": memory.total, "percent": memory.percent},
         "disk": {"usedBytes": disk.used, "totalBytes": disk.total, "percent": disk.percent},
-        "services": {"api": "available", "database": "not_configured", "trainingWorker": "not_configured", "gpu": "not_measured"},
+        "services": {"api": "available", "database": "not_configured", "trainingWorker": "available" if getattr(app.state, 'training', None) and app.state.training.engine_ready else "not_configured", "gpu": "not_measured"},
     }
 
 

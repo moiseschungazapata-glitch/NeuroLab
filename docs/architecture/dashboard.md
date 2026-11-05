@@ -23,3 +23,7 @@ Estado del sistema consulta la nueva API FastAPI. CPU, memoria y disco son reale
 Pruebas: tests/dashboard.mjs y tests/dashboard-system.mjs (Playwright, Chrome, frontend en 5173 y API en 8000). La segunda verifica contrato HTTP real, fallo y recuperación con respuestas controladas, validación de datos, aislamiento de filtros, guardado del resultado correcto y móvil/oscuro. services/api/tests/test_dashboard.py cubre recursos reales y contrato de salud/caché.
 
 M01 cubre la experiencia y el monitoreo del entorno local. El cierre empresarial completo depende de proyectos y trabajos persistidos con autenticación, API/DB y workers de M02/M06/M10; no se presenta el resumen local como una fuente compartida de servidor.
+
+## Integración M06
+
+El Dashboard distingue las simulaciones del navegador de los entrenamientos reales del servidor. El panel TensorFlow cuenta trabajos de los proyectos visibles, muestra activos/en cola y permite abrir su monitor. La salud indica disponibilidad de la cola CPU y mantiene PostgreSQL sin configurar. El historial real se consulta desde SQLite; no se mezcla con métricas demo ni con el cálculo del tamaño de localStorage.

@@ -36,3 +36,7 @@ Esto no crea cuentas, no envía invitaciones y no aplica autorización segura. L
 - tests/smoke.mjs y tests/dashboard.mjs: regresión del flujo principal y M01.
 
 Las pruebas de navegador requieren Playwright y Chrome con el frontend en 5173; NEUROLAB_PLAYWRIGHT permite señalar el módulo instalado usando una URL file:///.
+
+## Integración M06
+
+La ficha de proyecto muestra sus trabajos reales del servidor además de las simulaciones educativas. El archivado se bloquea en la interfaz cuando hay un trabajo real activo o en cola; la pertenencia y el estado de proyecto en el servidor siguen siendo snapshots locales hasta implementar la API empresarial de proyectos e identidad.
