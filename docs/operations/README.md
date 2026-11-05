@@ -6,4 +6,4 @@ Conservar el mismo origen (protocolo, dirección y puerto) permite seguir usando
 
 El acceso es local y de demostración. Los trabajos en curso continúan al navegar entre módulos, pero se reinician al recargar o cerrar sesión. Los registros terminados permanecen en el navegador.
 
-Docker, migraciones, monitoreo y workers son carpetas reservadas: esta etapa no añade servicios ni infraestructura ejecutable.
+Docker, migraciones y workers siguen reservados. M01 incorpora una API local de monitoreo; véase services/api/README.md para iniciarla en 127.0.0.1:8000. La aplicación funciona sin ella y muestra su desconexión explícitamente.

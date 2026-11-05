@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.NEUROLAB_PLAYWRIGHT||'playwright');
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+await page.addInitScript(()=>sessionStorage.setItem('nl-session','moiseschungazapata@gmail.com'));
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const snapshot={sampledAt:new Date().toISOString(),uptimeSeconds:30,cpuPercent:92,memory:{usedBytes:4e9,totalBytes:8e9,percent:50},disk:{usedBytes:10e9,totalBytes:100e9,percent:10},services:{api:'available',database:'not_configured',trainingWorker:'not_configured',gpu:'not_measured'}};
+try{
+ const response=await page.request.get('http://127.0.0.1:5173/api/v1/dashboard/system');
+ assert.equal(response.status(),200);assert.equal(response.headers()['cache-control'],'no-store');
+ const actual=await response.json();assert.ok(actual.cpuPercent>=0&&actual.cpuPercent<=100);assert.ok(actual.memory.totalBytes>0);
+ let mode='ok';
+ await page.route('**/api/v1/dashboard/system',route=>mode==='ok'?route.fulfill({json:snapshot}):mode==='invalid'?route.fulfill({json:{...snapshot,cpuPercent:999}}):route.fulfill({status:503,body:'unavailable'}));
+ await page.goto('http://127.0.0.1:5173/');
+ await page.getByText('API de monitoreo disponible',{exact:true}).waitFor();
+ await page.getByText('Uso elevado: revisa los recursos disponibles.',{exact:true}).waitFor();
+ mode='offline';await page.getByRole('button',{name:'Actualizar estado'}).click();
+ await page.getByText(/API de monitoreo sin conexión/).waitFor();
+ await page.getByText(/Última lectura conservada, sin actualizar/).waitFor();
+ assert.equal(await page.locator('.resource-warning').count(),0);
+ mode='invalid';await page.getByRole('button',{name:'Actualizar estado'}).click();
+ await page.getByText(/API de monitoreo sin conexión/).waitFor();
+ mode='ok';await page.getByRole('button',{name:'Actualizar estado'}).click();
+ await page.getByText('API de monitoreo disponible',{exact:true}).waitFor();
+ await page.getByRole('combobox',{name:'Filtrar dashboard por proyecto'}).selectOption('2');
+ assert.equal(await page.getByTestId('completed-count').locator('strong').innerText(),'0');
+ await page.getByText('No hay experimentos registrados en esta selección.',{exact:true}).waitFor();
+ // An older project-specific result must be saved instead of the global latest.
+ await page.evaluate(()=>{
+  const runs=JSON.parse(localStorage.getItem('nl-runs-v2'));
+  runs.push({...runs[0],id:500,projectId:2,projectName:'Predicción de demanda',family:'RNN',name:'Resultado RNN anterior'});
+  localStorage.setItem('nl-runs-v2',JSON.stringify(runs));
+ });
+ await page.reload();await page.getByRole('combobox',{name:'Filtrar dashboard por proyecto'}).selectOption('2');
+ await page.getByRole('button',{name:'Guardar versión',exact:true}).click();
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('nl-versions-v2'))[0]);
+ assert.equal(saved.runId,500);assert.equal(saved.projectId,2);
+ await page.getByRole('button',{name:'Vista general',exact:true}).click();
+ await page.getByRole('button',{name:'Activar modo oscuro'}).click();await page.setViewportSize({width:390,height:844});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.screenshot({path:'preview-dashboard-system-mobile.png',fullPage:true});
+ await page.evaluate(()=>{localStorage.setItem('nl-projects','[]');localStorage.setItem('nl-runs-v2','[]');localStorage.setItem('nl-versions-v2','[]')});
+ await page.reload();await page.getByText('No tienes proyectos todavía.',{exact:true}).waitFor();
+ assert.equal(await page.getByTestId('completed-count').locator('strong').innerText(),'0');
+ assert.equal(await page.getByRole('meter').getAttribute('aria-valuenow'),'0');
+ await page.getByRole('button',{name:'Crear primer proyecto'}).click();
+ await page.getByLabel('Nombre del proyecto').waitFor();
+ assert.deepEqual(errors,[]);
+ console.log('PASS: live API contract, resource warnings, stale data, invalid responses, recovery, project filtering, targeted version, mobile/dark.');
+}finally{await browser.close()}

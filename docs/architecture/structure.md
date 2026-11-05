@@ -57,4 +57,4 @@ El estado permanece en `useLaboratory`, montado en `App`, para que cambiar de pa
 
 Los estilos mantienen su orden de carga para conservar la apariencia y los temas. Los comandos npm se ejecutan desde la raíz y apuntan al frontend en `apps/web`; las dependencias siguen centralizadas en la raíz para evitar instalaciones duplicadas.
 
-Se incluyen exclusivamente RNN, CNN y GAN. Las carpetas reservadas del servidor no implican que existan API, workers ni base de datos funcionales. Los archivos `.gitkeep` conservan las carpetas vacías al versionarlas.
+Se incluyen exclusivamente RNN, CNN y GAN. M01 implementa una API local FastAPI de monitoreo. Los demás dominios del servidor, workers y base de datos permanecen pendientes. Los archivos `.gitkeep` conservan las carpetas vacías al versionarlas.

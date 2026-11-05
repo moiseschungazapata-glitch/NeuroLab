@@ -1,13 +1,38 @@
 # M02: Proyectos de IA
 
-El listado permite buscar por nombre, descripción y etiquetas; combinar filtros de familia, estado y etiqueta; y ordenar por nombre, creación o actualización. Solo se ofrecen RNN, CNN y GAN. La creación y edición validan campos vacíos, nombres duplicados y etiquetas (hasta ocho, de veinticinco caracteres cada una).
+## Funciones implementadas
 
-Cada ficha incluye las pestañas Contexto, Arquitectura, Dataset, Entrenamientos, Modelos e Historial. Contexto permite consultar los datos y guardar documentación en texto plano. La arquitectura y el dataset enlazan con los módulos existentes; no se han cambiado los ejemplos compartidos por familia del diseñador. Entrenamientos y Modelos muestran registros vinculados al proyecto. Historial registra localmente cambios de datos, documentación y miembros.
+Listado con búsqueda por nombre, descripción y etiquetas, sin distinguir tildes o mayúsculas; filtros combinados de familia, estado y etiqueta; ordenación por nombre o fechas. Estado vacío con creación directa. Solo se ofrecen las familias actualmente soportadas: RNN, CNN y GAN.
 
-Miembros permite registrar nombres, correos y roles, modificar el rol y retirar a un miembro después de una confirmación. Impide correos duplicados y conserva al propietario de la cuenta demo. Las cinco funciones del documento se describen en la referencia de permisos. Esto es configuración local: no envía invitaciones, no crea usuarios ni proporciona autorización segura de servidor.
+Creación y edición con validaciones compartidas: nombre hasta 70 caracteres, problema hasta 500, familia y estado admitidos, justificación opcional hasta 500 y ocho etiquetas de hasta 25 caracteres. Se detectan nombres duplicados normalizando espacios, tildes y mayúsculas; etiquetas se deduplican con el mismo criterio. Los proyectos anteriores conservan sus campos y fechas sin inventar fechas históricas.
 
-Los campos nuevos del proyecto son opcionales para conservar compatibilidad con los datos anteriores: etiquetas, documentación, miembros, eventos y fechas. Los proyectos antiguos se normalizan sin eliminar sus campos existentes y sin inventar fechas de creación. Las nuevas ejecuciones y versiones almacenan `projectId`. Al iniciar, los registros antiguos se vinculan por su referencia disponible al proyecto/ejecución. Renombrar un proyecto no altera las copias históricas de su nombre ni elimina su vínculo por identificador.
+Ficha con Contexto, Arquitectura, Dataset, Entrenamientos, Modelos e Historial. Los vínculos por projectId se conservan al renombrar. La justificación de familia aparece en Contexto. Las fechas incluyen hora y zona America/Lima; fechas inválidas muestran Sin fecha registrada.
 
-El módulo no incorpora eliminación de proyectos, invitaciones reales, colaboración remota ni auditoría protegida. La persistencia sigue siendo localStorage.
+## Organización y respaldo
 
-`tests/projects.mjs` verifica filtros combinados, edición, estado, etiquetas, documentación, roles, duplicados, protección del propietario, retiro confirmado, pestañas, persistencia, vínculos tras renombrar y diseño móvil/oscuro. `tests/smoke.mjs` verifica que el flujo anterior de creación y simulación sigue funcionando.
+Archivar requiere confirmación y conserva datasets, modelos y arquitecturas. Se bloquea el archivado durante una simulación del proyecto, tanto desde la acción como desde el formulario de edición. Un proyecto archivado no puede iniciar nuevas simulaciones. Reactivar recupera el estado anterior cuando está registrado, o En desarrollo para registros antiguos.
+
+Duplicar valida el nuevo nombre y copia contexto, etiquetas, documentación guardada y el banco completo de arquitecturas con identificador independiente. La copia inicia en Exploración y conserva únicamente al propietario demo. No se copian integrantes, historial antiguo, datasets, selecciones, ejecuciones ni versiones. Se registra la procedencia en su historial.
+
+Exportar JSON genera un respaldo con versión de esquema, fecha, proyecto, arquitecturas, ejecuciones y versiones de ese proyecto, y metadatos de sus datasets. No incluye archivos originales ni pesos entrenados; no constituye un mecanismo de restauración completo. La exportación utiliza la documentación guardada, no un borrador pendiente.
+
+## Borradores y persistencia
+
+La documentación conserva un borrador por proyecto en nl-project-draft-{id}, incluso al cambiar de módulo o recargar. Se puede descartar explícitamente. Al guardar correctamente nl-projects se elimina solo el borrador que coincide con el documento guardado. Si falla el guardado del proyecto, se conserva el borrador y se informa el error, permitiendo exportar los datos que siguen en memoria. Se advierte antes de cerrar con cambios pendientes o un fallo de persistencia.
+
+La persistencia general sigue siendo localStorage. Se muestra un aviso persistente si el navegador rechaza la escritura de proyectos; no se presenta el estado como guardado. Si también falla la escritura del borrador, se informa expresamente y no se garantiza su recuperación.
+
+## Miembros y límites
+
+Registro local con nombre, correo y uno de los cinco roles previstos; validación de campos, correos duplicados, cambio de rol y retiro confirmado. El propietario demo está protegido en los controles. El historial identifica el miembro retirado y el rol anterior/nuevo en los cambios.
+
+Esto no crea cuentas, no envía invitaciones y no aplica autorización segura. La gestión multiusuario, persistencia PostgreSQL, invitaciones, RBAC y auditoría protegida requieren los servicios de identidad y proyectos de la plataforma. M02 no declara esos requisitos empresariales completados. No se implementó borrado destructivo de proyectos; se utiliza archivado reversible.
+
+## Verificación
+
+- node tests/project-rules.mjs: reglas de nombres, etiquetas, límites, familias, estados, roles, correos y fechas inválidas (Node 24).
+- tests/projects.mjs: filtros, edición, miembros, documentación, pestañas, vínculos persistentes y móvil/oscuro.
+- tests/projects-actions.mjs: recuperación de borradores, archivado/reactivación, bloqueo de simulación, exportación filtrada, duplicación independiente y error de almacenamiento recuperable.
+- tests/smoke.mjs y tests/dashboard.mjs: regresión del flujo principal y M01.
+
+Las pruebas de navegador requieren Playwright y Chrome con el frontend en 5173; NEUROLAB_PLAYWRIGHT permite señalar el módulo instalado usando una URL file:///.
