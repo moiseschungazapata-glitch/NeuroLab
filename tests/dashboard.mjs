@@ -8,6 +8,11 @@ const dashboard=()=>page.getByRole('button',{name:'Vista general',exact:true}).c
 const count=async id=>Number(await page.getByTestId(id).locator('strong').innerText());
 try{
  await page.goto('http://127.0.0.1:5173/');
+ assert.equal(await page.locator('.network-art').count(),1);
+ assert.ok(await page.locator('.dashboard-network-signal').count()>0);
+ await page.getByRole('button',{name:'Pausar animación de la red'}).click();
+ assert.ok(await page.locator('.network-art').getAttribute('class').then(value=>value.includes('dashboard-network-paused')));
+ await page.getByRole('button',{name:'Reanudar animación de la red'}).click();
  assert.equal(await count('completed-count'),2);assert.equal(await count('cancelled-count'),1);assert.equal(await count('active-count'),0);
  assert.equal(await page.getByRole('meter').getAttribute('aria-valuenow'),'67');
  assert.ok(!(await page.locator('.stats').innerText()).includes('+1 este mes'));
