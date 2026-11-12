@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import {apiUrl} from '../../lib/api';
 type Resource={usedBytes:number;totalBytes:number;percent:number};
 type Snapshot={sampledAt:string;uptimeSeconds:number;cpuPercent:number;memory:Resource;disk:Resource;services:{api:string;database:string;trainingWorker:string;gpu:string}};
 const percent=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=100;
@@ -14,7 +15,7 @@ export function SystemHealth(){
   async function load(){
    if(document.hidden||pending)return;
    pending=true;controller=new AbortController();const timeout=setTimeout(()=>controller?.abort(),5000);
-   try{const response=await fetch('/api/v1/dashboard/system',{signal:controller.signal,cache:'no-store'});if(!response.ok)throw Error('unavailable');const data:unknown=await response.json();if(!validSnapshot(data))throw Error('invalid');if(!disposed){setSnapshot(data);setState('online')}}catch{if(!disposed)setState('offline')}finally{clearTimeout(timeout);pending=false}
+   try{const response=await fetch(apiUrl('/api/v1/dashboard/system'),{signal:controller.signal,cache:'no-store'});if(!response.ok)throw Error('unavailable');const data:unknown=await response.json();if(!validSnapshot(data))throw Error('invalid');if(!disposed){setSnapshot(data);setState('online')}}catch{if(!disposed)setState('offline')}finally{clearTimeout(timeout);pending=false}
   }
   void load();const timer=setInterval(()=>void load(),15000);const visible=()=>{if(!document.hidden)void load()};document.addEventListener('visibilitychange',visible);
   return()=>{disposed=true;controller?.abort();clearInterval(timer);document.removeEventListener('visibilitychange',visible)};

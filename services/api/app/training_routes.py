@@ -6,16 +6,18 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from workers.training import store
+from .config import ALLOWED_HOSTS, ALLOWED_ORIGINS, normalize_origin
 from .training_validation import validate_payload
 
 router = APIRouter(prefix='/api/v1')
-ALLOWED_HOSTS = {f'{host}:{port}' for host in ('127.0.0.1', 'localhost') for port in (5173, 4173, 8000)}
-ALLOWED_ORIGINS = {'http://'+host for host in ALLOWED_HOSTS}
 
 
 def service(request, authenticated=True):
-    if request.headers.get('host', '') not in ALLOWED_HOSTS or request.headers.get('sec-fetch-site') == 'cross-site' or (request.headers.get('origin') and request.headers['origin'] not in ALLOWED_ORIGINS):
-        raise HTTPException(403, 'La API de entrenamiento solo admite el entorno local autorizado.')
+    host = request.headers.get('host', '').lower()
+    origin = normalize_origin(request.headers.get('origin', ''))
+    cross_site_without_origin = request.headers.get('sec-fetch-site') == 'cross-site' and not origin
+    if host not in ALLOWED_HOSTS or cross_site_without_origin or (origin and origin not in ALLOWED_ORIGINS):
+        raise HTTPException(403, 'La API de entrenamiento no reconoce este host u origen.')
     engine = getattr(request.app.state, 'training', None)
     if not engine:
         raise HTTPException(503, 'Servicio de entrenamiento no disponible.')

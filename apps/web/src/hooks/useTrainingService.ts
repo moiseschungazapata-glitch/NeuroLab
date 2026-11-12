@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {stored} from '../lib/storage';
+import {apiUrl} from '../lib/api';
 import {terminal,type RealJob,type JobEvaluation,type ModelStatus,type RegisteredModel} from '../features/training/service';
 import type {ReportPayload} from '../features/reports/model';
 
@@ -9,12 +10,12 @@ export function useTrainingService(){
  const pendingSubmission=useRef<{body:string;key:string}|null>(null);
  const session=useCallback(async()=>{
   if(capability.current)return capability.current;
-  if(!sessionPromise.current)sessionPromise.current=(async()=>{const response=await fetch('/api/v1/training/session',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error('La API de entrenamiento no está disponible.');const data=await response.json();if(typeof data.token!=='string')throw Error('Respuesta de sesión inválida.');capability.current=data.token;setEngineReady(data.engineReady===true);return data.token})().finally(()=>{sessionPromise.current=null});
+  if(!sessionPromise.current)sessionPromise.current=(async()=>{const response=await fetch(apiUrl('/api/v1/training/session'),{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error('La API de entrenamiento no está disponible.');const data=await response.json();if(typeof data.token!=='string')throw Error('Respuesta de sesión inválida.');capability.current=data.token;setEngineReady(data.engineReady===true);return data.token})().finally(()=>{sessionPromise.current=null});
   return sessionPromise.current;
  },[]);
  const request=useCallback(async(path:string,init:RequestInit={})=>{
   for(let attempt=0;attempt<2;attempt++){
-   const token=await session();const response=await fetch('/api/v1'+path,{...init,cache:'no-store',headers:{...init.headers,Authorization:'Bearer '+token},signal:init.signal??AbortSignal.timeout(15000)});
+   const token=await session();const response=await fetch(apiUrl('/api/v1'+path),{...init,cache:'no-store',headers:{...init.headers,Authorization:'Bearer '+token},signal:init.signal??AbortSignal.timeout(15000)});
    if(response.status===401&&attempt===0){capability.current='';continue}
    if(!response.ok){let message='No se pudo completar la operación de entrenamiento.';try{const data=await response.json();if(typeof data.detail==='string')message=data.detail}catch{/* No sensitive response body is displayed. */}throw Object.assign(Error(message),{status:response.status})}
    setOnline(true);return response;

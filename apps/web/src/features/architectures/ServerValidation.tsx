@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {analyzeArchitecture,type Architecture} from './model';
+import {apiUrl} from '../../lib/api';
 
 export function ServerValidation({architecture}:{architecture:Architecture}){
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[failed,setFailed]=useState(false);
@@ -10,7 +11,7 @@ export function ServerValidation({architecture}:{architecture:Architecture}){
   setBusy(true);setFailed(false);setMessage('Validando en servidor…');controller.current=new AbortController();
   const timer=setTimeout(()=>controller.current?.abort(),5000);
   try{
-   const response=await fetch('/api/v1/architectures/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(analysis.architecture),signal:controller.current.signal});
+   const response=await fetch(apiUrl('/api/v1/architectures/validate'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(analysis.architecture),signal:controller.current.signal});
    if(!response.ok)throw Error('No se pudo validar en el servidor. Comprueba que la API esté disponible.');
    const data=await response.json();
    if(data.valid!==true||data.engine!=='analytic'||data.parameters!==analysis.parameters)throw Error('El servidor no confirmó el diseño y su conteo. Revisa la configuración o la versión de la API.');

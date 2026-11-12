@@ -2,6 +2,10 @@
 
 Frontend React/TypeScript con proyectos, diseñador Feedforward/RNN/CNN/GAN, datasets y entrenamiento real TensorFlow/Keras en CPU, con simulación educativa separada. FastAPI ofrece monitoreo, validación de arquitecturas y cola de trabajos.
 
+## Despliegue
+
+El repositorio está preparado para publicar el frontend Vite en Vercel y el backend persistente FastAPI/TensorFlow en Railway. Consultar [la guía completa de despliegue](docs/operations/deployment.md) antes de importar el repositorio en ambas plataformas.
+
 ## Inicio
 
 1. Instalar Node.js y Python 3.12 o compatible.

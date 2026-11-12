@@ -6,6 +6,6 @@ Conservar el mismo origen (protocolo, dirección y puerto) permite seguir usando
 
 El acceso de identidad sigue siendo local y de demostración. Las simulaciones educativas se reinician al recargar o cerrar sesión. Los entrenamientos reales de M06 continúan en el servidor aunque se cierre el navegador; su historial se recupera desde SQLite y la interfaz reconecta por SSE/REST.
 
-Docker y las migraciones PostgreSQL siguen pendientes. M06 implementa workers locales TensorFlow y SQLite; ver workers/training/README.md. M01 incorpora una API local de monitoreo; véase services/api/README.md para iniciarla en 127.0.0.1:8000. La aplicación funciona sin ella y muestra su desconexión explícitamente.
+M06 implementa workers TensorFlow y SQLite; ver workers/training/README.md. M01 incorpora una API de monitoreo; véase services/api/README.md para iniciarla en 127.0.0.1:8000. La aplicación funciona sin ella y muestra su desconexión explícitamente. Para producción controlada en Vercel y Railway, seguir [la guía de despliegue](deployment.md).
 
 Para detener la API con conexiones SSE activas, usar --timeout-graceful-shutdown 5 al iniciar Uvicorn. Antes de cualquier respaldo o traslado del historial, detener la API y verificar que no haya trabajos activos; respaldar íntegramente la carpeta administrada NEUROLAB_TRAINING_DIR, incluidos SQLite, eventos y artefactos. No se configuraron backups automáticos ni retención empresarial.

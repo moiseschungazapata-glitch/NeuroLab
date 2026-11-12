@@ -6,7 +6,9 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import psutil
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 from .architectures import validate_architecture
+from .config import ALLOWED_ORIGINS
 from .training_service import TrainingService
 from .training_routes import router as training_router
 from .reports import router as reports_router
@@ -23,6 +25,15 @@ async def lifespan(app):
 
 
 app = FastAPI(title="NeuroLab local services", version="1.0.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=sorted(ALLOWED_ORIGINS),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "Last-Event-ID"],
+    expose_headers=["Content-Disposition"],
+    max_age=600,
+)
 app.include_router(training_router)
 app.include_router(reports_router)
 @app.middleware('http')

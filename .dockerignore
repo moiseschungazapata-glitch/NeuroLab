@@ -1,0 +1,15 @@
+.git
+.github
+.runtime
+.training-runtime
+.venv
+node_modules
+dist
+apps
+docs
+tests
+*.log
+*.png
+*.pdf
+__pycache__
+*.pyc

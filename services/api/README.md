@@ -14,9 +14,9 @@ python -m venv .venv
 .venv/Scripts/python -m uvicorn services.api.app.main:app --host 127.0.0.1 --port 8000 --timeout-graceful-shutdown 5
 ```
 
-En otra terminal ejecutar `npm run dev`. Vite y preview envían `/api` al puerto 8000. No se necesitan CORS ni secretos en React. Para el entorno de esta revisión las dependencias están instaladas en `.runtime`; usar PYTHONPATH apuntando a esa carpeta con el Python del runtime de Codex.
+En otra terminal ejecutar `npm run dev`. Vite y preview envían `/api` al puerto 8000. Para el entorno de esta revisión las dependencias están instaladas en `.runtime`; usar PYTHONPATH apuntando a esa carpeta con el Python del runtime de Codex.
 
-El servicio está destinado a desarrollo en loopback. Antes de publicarlo se debe integrar autenticación y autorización de administración, HTTPS y límites de tasa de la plataforma. No iniciar en 0.0.0.0 como despliegue público.
+El desarrollo se mantiene en loopback. El despliegue controlado usa HTTPS, una lista exacta de orígenes y hosts, y un contenedor separado; consultar [la guía de despliegue](../../docs/operations/deployment.md). La capacidad de sesión actual no reemplaza identidad, RBAC ni límites de tasa empresariales, por lo que no debe publicarse sin protección para usuarios no confiables.
 
 M06 implementa cola FIFO, workers aislados por proceso, SQLite local y modelos .keras reales. PostgreSQL y la API empresarial de proyectos siguen pendientes; el monitoreo distingue disponibilidad del worker y PostgreSQL. GPU queda sin medición y el motor M06 usa CPU. El resumen de simulaciones sigue siendo del navegador; los trabajos reales proceden de la API. Ver docs/architecture/training.md y workers/training/README.md.
 
