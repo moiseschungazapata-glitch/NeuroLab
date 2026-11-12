@@ -4,6 +4,7 @@ import secrets
 import uuid
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel, Field
 from workers.training import store
 from .training_validation import validate_payload
 
@@ -75,6 +76,71 @@ async def create_job(project_id: int, request: Request):
 def get_job(identifier: str, request: Request):
     service(request)
     return record(identifier)
+
+
+class EvaluationInput(BaseModel):
+    observations: str = Field(max_length=4000)
+    limitations: str = Field(max_length=4000)
+    revision: int = Field(ge=0, strict=True)
+
+
+class ModelStatusInput(BaseModel):
+    status: str = Field(pattern='^(Revisado|Aprobado|Retirado)$')
+    revision: int = Field(ge=0, strict=True)
+
+
+@router.get('/training-jobs/{identifier}/evaluation')
+def get_evaluation(identifier: str, request: Request):
+    service(request)
+    return store.get_evaluation(record(identifier)['id'])
+
+
+@router.put('/training-jobs/{identifier}/evaluation')
+def save_evaluation(identifier: str, evaluation: EvaluationInput, request: Request):
+    service(request)
+    job = record(identifier)
+    try:
+        return store.save_evaluation(job['id'], **evaluation.model_dump())
+    except store.EvaluationConflict as exc:
+        raise HTTPException(409, str(exc))
+
+
+@router.get('/model-versions')
+def list_model_versions(request: Request):
+    service(request)
+    return store.list_model_versions()
+
+
+@router.post('/training-jobs/{identifier}/model-version', status_code=201)
+def register_model_version(identifier: str, request: Request):
+    service(request)
+    job = record(identifier)
+    try:
+        return store.register_model(job['id'])
+    except store.RegistryConflict as exc:
+        raise HTTPException(409, str(exc))
+
+
+@router.get('/model-versions/{identifier}/manifest')
+def model_manifest(identifier: str, request: Request):
+    service(request)
+    job = record(identifier)
+    try:
+        return store.get_model_version(job['id'])
+    except KeyError:
+        raise HTTPException(404, 'Versión de modelo no encontrada.')
+
+
+@router.patch('/model-versions/{identifier}/status')
+def change_model_status(identifier: str, change: ModelStatusInput, request: Request):
+    service(request)
+    job = record(identifier)
+    try:
+        return store.change_model_status(job['id'], change.status, change.revision)
+    except KeyError:
+        raise HTTPException(404, 'Versión de modelo no encontrada.')
+    except store.RegistryConflict as exc:
+        raise HTTPException(409, str(exc))
 
 
 @router.post('/training-jobs/{identifier}/cancel')

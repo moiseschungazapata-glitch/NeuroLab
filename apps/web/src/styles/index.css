@@ -8,3 +8,6 @@
 @import './architectures.css';
 @import './datasets.css';
 @import './training.css';
+@import './evaluation.css';
+@import './model-registry.css';
+@import './reports.css';

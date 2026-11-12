@@ -1,9 +1,10 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {stored} from '../lib/storage';
-import {terminal,type RealJob} from '../features/training/service';
+import {terminal,type RealJob,type JobEvaluation,type ModelStatus,type RegisteredModel} from '../features/training/service';
+import type {ReportPayload} from '../features/reports/model';
 
 export function useTrainingService(){
- const [jobs,setJobs]=useState<RealJob[]>([]),[selected,setSelected]=useState(()=>{const id=stored<unknown>('nl-real-job',null);return typeof id==='string'?id:''}),[error,setError]=useState(''),[online,setOnline]=useState(false),[engineReady,setEngineReady]=useState(false),[streamState,setStreamState]=useState('Sin trabajo seleccionado'),[busy,setBusy]=useState(false);
+ const [jobs,setJobs]=useState<RealJob[]>([]),[models,setModels]=useState<RegisteredModel[]>([]),[selected,setSelected]=useState(()=>{const id=stored<unknown>('nl-real-job',null);return typeof id==='string'?id:''}),[error,setError]=useState(''),[online,setOnline]=useState(false),[engineReady,setEngineReady]=useState(false),[streamState,setStreamState]=useState('Sin trabajo seleccionado'),[busy,setBusy]=useState(false);
  const capability=useRef(''),sessionPromise=useRef<Promise<string>|null>(null),selectedRef=useRef(selected);selectedRef.current=selected;
  const pendingSubmission=useRef<{body:string;key:string}|null>(null);
  const session=useCallback(async()=>{
@@ -21,7 +22,8 @@ export function useTrainingService(){
  },[session]);
  const upsert=useCallback((job:RealJob)=>setJobs(previous=>{const old=previous.find(j=>j.id===job.id);if(old&&old.eventId>job.eventId)return previous;return [job,...previous.filter(j=>j.id!==job.id)].sort((a,b)=>b.createdAt.localeCompare(a.createdAt))}),[]);
  const refresh=useCallback(async()=>{try{const response=await request('/training-jobs'),data:RealJob[]=await response.json();setJobs(previous=>data.map(job=>{const old=previous.find(j=>j.id===job.id);return old&&old.eventId>job.eventId?old:job}));setError('');if(!selectedRef.current&&data.length)setSelected(data[0].id)}catch{setOnline(false);setError('No se pudo consultar la API de entrenamiento. Los datos anteriores pueden estar desactualizados.')}},[request]);
- useEffect(()=>{void refresh();const timer=setInterval(()=>void refresh(),5000);return()=>clearInterval(timer)},[refresh]);
+ const refreshModels=useCallback(async()=>{try{const response=await request('/model-versions'),data:RegisteredModel[]=await response.json();setModels(data);setError('')}catch{setOnline(false);setError('No se pudo consultar el registro de modelos.')}},[request]);
+ useEffect(()=>{void refresh();void refreshModels();const timer=setInterval(()=>void refresh(),5000);return()=>clearInterval(timer)},[refresh,refreshModels]);
  useEffect(()=>{try{localStorage.setItem('nl-real-job',JSON.stringify(selected))}catch{/* Selection does not affect the server job. */}},[selected]);
  useEffect(()=>{if(!jobs.length)return;try{const saved=stored<unknown>('nl-real-job-references',[]),ids=Array.isArray(saved)?saved.filter((id):id is string=>typeof id==='string'):[];localStorage.setItem('nl-real-job-references',JSON.stringify([...new Set([...ids,...jobs.map(j=>j.dataset.id)])]))}catch{/* References remain available in memory. */}},[jobs]);
  useEffect(()=>{
@@ -44,6 +46,21 @@ export function useTrainingService(){
  },[selected,request,upsert]);
  async function submit(projectId:number,payload:unknown){setBusy(true);setError('');const body=JSON.stringify(payload);if(pendingSubmission.current?.body!==body)pendingSubmission.current={body,key:crypto.randomUUID()};const submission=pendingSubmission.current;try{const job:RealJob=await(await request('/projects/'+projectId+'/training-jobs',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':submission.key},body})).json();pendingSubmission.current=null;upsert(job);setSelected(job.id);return job}catch(e){const message=e instanceof TypeError?'La conexión se interrumpió. Reintenta con la misma configuración para recuperar el envío sin duplicarlo.':e instanceof Error?e.message:'No se pudo enviar el trabajo.';setError(message);throw Error(message)}finally{setBusy(false)}}
  async function action(id:string,action:'cancel'|'retry'){setBusy(true);setError('');try{const job:RealJob=await(await request('/training-jobs/'+id+'/'+action,{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()}})).json();upsert(job);setSelected(job.id)}catch(e){setError(e instanceof Error?e.message:'No se pudo completar la acción.')}finally{setBusy(false)}}
- async function download(job:RealJob,name:string){try{const response=await request('/training-jobs/'+job.id+'/artifacts/'+encodeURIComponent(name));const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){setError(e instanceof Error?e.message:'No se pudo descargar el modelo.')}}
- return {jobs,job:jobs.find(j=>j.id===selected),selected,setSelected,error,online,engineReady,streamState,busy,refresh,submit,action,download};
+ async function download(job:Pick<RealJob,'id'>,name:string){try{const response=await request('/training-jobs/'+job.id+'/artifacts/'+encodeURIComponent(name));const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){setError(e instanceof Error?e.message:'No se pudo descargar el modelo.')}}
+ const getEvaluation = useCallback(async (id: string, signal?: AbortSignal): Promise<JobEvaluation> => {
+  const response = await request(`/training-jobs/${id}/evaluation`, {signal});
+  return response.json();
+ }, [request]);
+ const saveEvaluation = useCallback(async (id: string, evaluation: JobEvaluation): Promise<JobEvaluation> => {
+  const response = await request(`/training-jobs/${id}/evaluation`, {
+   method: 'PUT', headers: {'Content-Type': 'application/json'},
+   body: JSON.stringify({observations: evaluation.observations, limitations: evaluation.limitations, revision: evaluation.revision}),
+  });
+  return response.json();
+ }, [request]);
+ async function registerModel(id:string){setBusy(true);try{const model:RegisteredModel=await(await request(`/training-jobs/${id}/model-version`,{method:'POST'})).json();setModels(previous=>[model,...previous.filter(item=>item.jobId!==id)]);return model}catch(e){setError(e instanceof Error?e.message:'No se pudo registrar el modelo.');throw e}finally{setBusy(false)}}
+ async function changeModelStatus(id:string,status:ModelStatus,revision:number){setBusy(true);try{const model:RegisteredModel=await(await request(`/model-versions/${id}/status`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,revision})})).json();setModels(previous=>previous.map(item=>item.jobId===id?model:item));return model}catch(e){setError(e instanceof Error?e.message:'No se pudo actualizar el estado.');throw e}finally{setBusy(false)}}
+ async function downloadManifest(model:RegisteredModel){try{const response=await request(`/model-versions/${model.jobId}/manifest`);const url=URL.createObjectURL(new Blob([JSON.stringify(await response.json(),null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=`modelo-v1.${model.version-1}.0-${model.jobId.slice(0,8)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){setError(e instanceof Error?e.message:'No se pudo exportar la ficha.')}}
+ async function downloadReport(projectId:number,payload:ReportPayload){setBusy(true);try{const response=await request(`/projects/${projectId}/reports/pdf`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(30000)});const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download=`reporte-neurolab-${projectId}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){setError(e instanceof Error?e.message:'No se pudo generar el reporte PDF.');throw e}finally{setBusy(false)}}
+ return {jobs,models,job:jobs.find(j=>j.id===selected),selected,setSelected,error,online,engineReady,streamState,busy,refresh,refreshModels,submit,action,download,getEvaluation,saveEvaluation,registerModel,changeModelStatus,downloadManifest,downloadReport};
 }

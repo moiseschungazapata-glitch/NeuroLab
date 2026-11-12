@@ -29,6 +29,7 @@ try{
   assert.ok((await page.locator('tbody tr').first().innerText()).includes(family));
   if(family!=='CNN')assert.ok(!(await page.locator('tbody tr').first().innerText()).includes('%'));
   await page.getByRole('button',{name:'Evaluación',exact:true}).click();
+  await page.getByRole('button',{name:'Simulación educativa',exact:true}).click();
   assert.ok((await page.locator('.evaluation-stats').innerText()).includes(family==='RNN'?'MAE':family==='CNN'?'Precisión':'Pérdida G'));
   await page.getByRole('button',{name:'Diseñador de redes',exact:true}).click();
  }

@@ -78,3 +78,41 @@ class TrainingStoreTests(unittest.TestCase):
         self.assertEqual(store.update(job['id'], state='RUNNING')['state'], 'CANCELLED')
         store.initialize()
         self.assertEqual(store.list_jobs()[0]['id'], job['id'])
+
+    def test_evaluation_notes_are_scoped_and_reject_stale_writes(self):
+        job = store.create(validate_payload(sample()))
+        other = store.create(validate_payload(sample()))
+        saved = store.save_evaluation(job['id'], 'Observación', 'Muestra pequeña', 0)
+        with self.assertRaises(store.EvaluationConflict):
+            store.save_evaluation(job['id'], 'Edición anterior', '', 0)
+        store.initialize()
+        self.assertEqual(store.get_evaluation(job['id']), saved)
+        self.assertEqual(store.get_evaluation(other['id'])['revision'], 0)
+        self.assertEqual(store.get(job['id']), job)
+
+    def test_model_registry_is_immutable_versioned_and_rejects_invalid_transitions(self):
+        payload = validate_payload(sample())
+        first = store.create(payload)
+        store.update(first['id'], state='PREPARING')
+        store.update(first['id'], state='RUNNING')
+        store.update(first['id'], state='COMPLETED', testMetrics={'loss': .25}, artifacts=[{'name': 'model.keras', 'bytes': 12, 'sha256': 'a'*64}])
+        registered = store.register_model(first['id'])
+        self.assertEqual((registered['version'], registered['status']), (1, 'Borrador'))
+        self.assertEqual(store.register_model(first['id'])['version'], 1)
+        reviewed = store.change_model_status(first['id'], 'Revisado', 0)
+        with self.assertRaises(store.RegistryConflict):
+            store.change_model_status(first['id'], 'Aprobado', 0)
+        with self.assertRaises(store.RegistryConflict):
+            store.change_model_status(first['id'], 'Retirado', reviewed['revision'])
+        approved = store.change_model_status(first['id'], 'Aprobado', reviewed['revision'])
+        store.change_model_status(first['id'], 'Retirado', approved['revision'])
+        second = store.create(payload)
+        store.update(second['id'], state='PREPARING')
+        store.update(second['id'], state='RUNNING')
+        store.update(second['id'], state='COMPLETED', testMetrics={'loss': .1}, artifacts=[{'name': 'model.keras', 'bytes': 10, 'sha256': 'b'*64}])
+        self.assertEqual(store.register_model(second['id'])['version'], 2)
+        store.initialize()
+        persisted = store.get_model_version(first['id'])
+        self.assertEqual(persisted['testMetrics'], {'loss': .25})
+        self.assertEqual(persisted['status'], 'Retirado')
+        self.assertEqual(len(store.list_model_versions()), 2)

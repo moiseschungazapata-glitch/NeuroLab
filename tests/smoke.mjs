@@ -25,11 +25,13 @@ try{
  await page.getByRole('button',{name:'Entrenamientos',exact:true}).click();
  await page.getByRole('button',{name:'Guardar versión',exact:true}).waitFor({timeout:60000});
  await page.getByRole('button',{name:'Guardar versión',exact:true}).click();
+ await page.getByRole('button',{name:'Demostración educativa',exact:true}).click();
  await page.getByText('v1.1.0',{exact:true}).waitFor();
  await page.reload();
  await page.getByRole('button',{name:'Proyectos',exact:false}).first().click();
  await page.getByRole('heading',{name:'Proyecto de prueba',exact:true}).waitFor();
  await page.getByRole('button',{name:'Registro de modelos',exact:true}).click();
+ await page.getByRole('button',{name:'Demostración educativa',exact:true}).click();
  await page.getByText('v1.1.0',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Vista general',exact:true}).click();
  await page.screenshot({path:'preview-desktop.png',fullPage:true,animations:'disabled'});

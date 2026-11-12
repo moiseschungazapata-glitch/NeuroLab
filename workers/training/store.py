@@ -38,6 +38,19 @@ def initialize():
         db.execute("CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY,state TEXT NOT NULL,created TEXT NOT NULL,record TEXT NOT NULL,payload TEXT NOT NULL,pid INTEGER)")
         db.execute("CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,record TEXT NOT NULL)")
         db.execute("CREATE INDEX IF NOT EXISTS events_job ON events(job_id,seq)")
+        db.execute("""CREATE TABLE IF NOT EXISTS evaluations (
+            job_id TEXT PRIMARY KEY REFERENCES jobs(id),
+            observations TEXT NOT NULL, limitations TEXT NOT NULL,
+            revision INTEGER NOT NULL, updated_at TEXT NOT NULL
+        )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS model_versions (
+            job_id TEXT PRIMARY KEY REFERENCES jobs(id),
+            project_id INTEGER NOT NULL, version INTEGER NOT NULL,
+            status TEXT NOT NULL, revision INTEGER NOT NULL,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+            snapshot TEXT NOT NULL,
+            UNIQUE(project_id, version)
+        )""")
         if 'submission' not in [r[1] for r in db.execute('PRAGMA table_info(jobs)')]:
             db.execute('ALTER TABLE jobs ADD COLUMN submission TEXT')
         db.execute('CREATE UNIQUE INDEX IF NOT EXISTS jobs_submission ON jobs(submission)')
@@ -77,6 +90,118 @@ def get(identifier):
         if not row:
             raise KeyError(identifier)
         return json.loads(row[0])
+
+
+class EvaluationConflict(ValueError):
+    pass
+
+
+class RegistryConflict(ValueError):
+    pass
+
+
+def get_evaluation(identifier):
+    with connect() as db:
+        row = db.execute(
+            'SELECT observations, limitations, revision, updated_at AS updatedAt FROM evaluations WHERE job_id=?',
+            (identifier,),
+        ).fetchone()
+    return dict(row) if row else {'observations': '', 'limitations': '', 'revision': 0, 'updatedAt': None}
+
+
+def save_evaluation(identifier, observations, limitations, revision):
+    with connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        if not db.execute('SELECT 1 FROM jobs WHERE id=?', (identifier,)).fetchone():
+            raise KeyError(identifier)
+        current = db.execute('SELECT revision FROM evaluations WHERE job_id=?', (identifier,)).fetchone()
+        if revision != (current['revision'] if current else 0):
+            raise EvaluationConflict('La evaluación cambió desde que la abriste.')
+        saved = {'observations': observations, 'limitations': limitations, 'revision': revision + 1, 'updatedAt': now()}
+        db.execute('''INSERT INTO evaluations (job_id, observations, limitations, revision, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(job_id) DO UPDATE SET observations=excluded.observations,
+            limitations=excluded.limitations, revision=excluded.revision, updated_at=excluded.updated_at''',
+            (identifier, observations, limitations, saved['revision'], saved['updatedAt']))
+        return saved
+
+
+def _model_version(row):
+    result = json.loads(row['snapshot'])
+    result.update({
+        'jobId': row['job_id'], 'projectId': row['project_id'],
+        'version': row['version'], 'status': row['status'],
+        'revision': row['revision'], 'createdAt': row['created_at'],
+        'updatedAt': row['updated_at'],
+    })
+    return result
+
+
+def get_model_version_from_db(db, identifier):
+    row = db.execute('SELECT * FROM model_versions WHERE job_id=?', (identifier,)).fetchone()
+    if not row:
+        raise KeyError(identifier)
+    return _model_version(row)
+
+
+def list_model_versions():
+    with connect() as db:
+        rows = db.execute('SELECT * FROM model_versions ORDER BY created_at DESC').fetchall()
+    return [_model_version(row) for row in rows]
+
+
+def get_model_version(identifier):
+    with connect() as db:
+        return get_model_version_from_db(db, identifier)
+
+
+def register_model(identifier):
+    with connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        existing = db.execute('SELECT * FROM model_versions WHERE job_id=?', (identifier,)).fetchone()
+        if existing:
+            return _model_version(existing)
+        job_row = db.execute('SELECT record FROM jobs WHERE id=?', (identifier,)).fetchone()
+        if not job_row:
+            raise KeyError(identifier)
+        job = json.loads(job_row['record'])
+        if job['state'] != 'COMPLETED' or not job.get('artifacts'):
+            raise RegistryConflict('Solo se registran ejecuciones completadas con artefactos.')
+        version = db.execute(
+            'SELECT COALESCE(MAX(version), 0) + 1 FROM model_versions WHERE project_id=?',
+            (job['projectId'],),
+        ).fetchone()[0]
+        stamp = now()
+        snapshot = {
+            'projectName': job['projectName'], 'family': job['family'],
+            'architecture': job['architecture'], 'config': job['config'],
+            'dataset': job['dataset'], 'testMetrics': job.get('testMetrics', {}),
+            'artifacts': job['artifacts'], 'startedAt': job.get('startedAt'),
+            'endedAt': job.get('endedAt'), 'tensorflowVersion': job.get('tensorflowVersion'),
+            'stoppedEarly': job.get('stoppedEarly', False),
+            'weightsChanged': job.get('weightsChanged', False),
+        }
+        db.execute('''INSERT INTO model_versions
+            (job_id, project_id, version, status, revision, created_at, updated_at, snapshot)
+            VALUES (?, ?, ?, 'Borrador', 0, ?, ?, ?)''',
+            (identifier, job['projectId'], version, stamp, stamp, json.dumps(snapshot, allow_nan=False)))
+        return get_model_version_from_db(db, identifier)
+
+
+def change_model_status(identifier, status, revision):
+    transitions = {'Borrador': 'Revisado', 'Revisado': 'Aprobado', 'Aprobado': 'Retirado'}
+    with connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        row = db.execute('SELECT * FROM model_versions WHERE job_id=?', (identifier,)).fetchone()
+        if not row:
+            raise KeyError(identifier)
+        if revision != row['revision']:
+            raise RegistryConflict('La versión cambió desde que la abriste.')
+        if transitions.get(row['status']) != status:
+            raise RegistryConflict('Transición de estado no permitida.')
+        db.execute('UPDATE model_versions SET status=?, revision=?, updated_at=? WHERE job_id=?',
+                   (status, revision + 1, now(), identifier))
+        return get_model_version_from_db(db, identifier)
 
 
 def payload(identifier):

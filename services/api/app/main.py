@@ -9,6 +9,7 @@ from fastapi import FastAPI, Response
 from .architectures import validate_architecture
 from .training_service import TrainingService
 from .training_routes import router as training_router
+from .reports import router as reports_router
 
 @asynccontextmanager
 async def lifespan(app):
@@ -23,10 +24,11 @@ async def lifespan(app):
 
 app = FastAPI(title="NeuroLab local services", version="1.0.0", lifespan=lifespan)
 app.include_router(training_router)
+app.include_router(reports_router)
 @app.middleware('http')
 async def no_training_cache(request, call_next):
     response = await call_next(request)
-    if '/training' in request.url.path:
+    if '/training' in request.url.path or '/model-versions' in request.url.path:
         response.headers['Cache-Control'] = 'no-store'
     return response
 STARTED = time.monotonic()
