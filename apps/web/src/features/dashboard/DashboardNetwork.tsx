@@ -1,6 +1,3 @@
-import {Pause, Play} from 'lucide-react';
-import {useState} from 'react';
-
 const nodes = [0, 1, 2, 3].flatMap(column =>
   [0, 1, 2, 3].map(row => ({column, row, x: 65 + column * 95, y: 40 + row * 52})),
 );
@@ -15,9 +12,7 @@ const connections = nodes.flatMap(node =>
 );
 
 export function DashboardNetwork() {
-  const [paused, setPaused] = useState(false);
-
-  return <figure className={'network-art '+(paused ? 'dashboard-network-paused' : '')} aria-label="Red neuronal animada con señales que avanzan entre sus capas">
+  return <figure className="network-art" aria-label="Red neuronal animada con señales que avanzan entre sus capas">
     <svg viewBox="0 0 420 240" aria-hidden="true">
       <defs>
         <radialGradient id="dashboard-network-glow"><stop stopColor="#b4ecd2" stopOpacity=".35"/><stop offset="1" stopColor="#b4ecd2" stopOpacity="0"/></radialGradient>
@@ -35,8 +30,5 @@ export function DashboardNetwork() {
       </g>)}
     </svg>
     <div className="dashboard-network-axis" aria-hidden="true"><span>INPUT</span><b>HIDDEN LAYERS</b><span>OUTPUT</span></div>
-    <button className="dashboard-network-control" type="button" onClick={()=>setPaused(value=>!value)} aria-label={paused ? 'Reanudar animación de la red' : 'Pausar animación de la red'} title={paused ? 'Reanudar animación' : 'Pausar animación'}>
-      {paused ? <Play size={12}/> : <Pause size={12}/>}<span>{paused ? 'Reanudar' : 'Pausar'}</span>
-    </button>
   </figure>;
 }
